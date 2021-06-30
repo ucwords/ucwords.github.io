@@ -1,0 +1,364 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>skiplist - 跳表 | 一七令</title><meta name="keywords" content="redis,list,skiplist,跳表"><meta name="author" content="一七令"><meta name="copyright" content="一七令"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="前言跳表(skiplist、跳跃表) 是一个很优秀的数据结构，比如用于 Redis、levelDB等出名的开源项目上。跳表在原有的有序链表上面增加了多级索引，通过索引来实现快速查找。 它的结构特点在名称能很好的体现出来，就像兔子一样，蹦蹦跳跳。可以结合下面的图有个初步的印象。  是不是看起来很形象了，接下来看看 Redis  是怎么实现跳表。 源码解读 本文讲解的版本为 Redis 6.0 ，可以">
+<meta property="og:type" content="article">
+<meta property="og:title" content="skiplist - 跳表">
+<meta property="og:url" content="http://blog.ucwords.com/2021/06/30/skiplist-tiao-biao/index.html">
+<meta property="og:site_name" content="一七令">
+<meta property="og:description" content="前言跳表(skiplist、跳跃表) 是一个很优秀的数据结构，比如用于 Redis、levelDB等出名的开源项目上。跳表在原有的有序链表上面增加了多级索引，通过索引来实现快速查找。 它的结构特点在名称能很好的体现出来，就像兔子一样，蹦蹦跳跳。可以结合下面的图有个初步的印象。  是不是看起来很形象了，接下来看看 Redis  是怎么实现跳表。 源码解读 本文讲解的版本为 Redis 6.0 ，可以">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://blog.ucwords.com/img/cover/skiplist.png">
+<meta property="article:published_time" content="2021-06-30T15:19:23.000Z">
+<meta property="article:modified_time" content="2021-06-30T15:21:48.715Z">
+<meta property="article:author" content="一七令">
+<meta property="article:tag" content="redis">
+<meta property="article:tag" content="数据结构">
+<meta property="article:tag" content="skiplist">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://blog.ucwords.com/img/cover/skiplist.png"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://blog.ucwords.com/2021/06/30/skiplist-tiao-biao/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//hm.baidu.com"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><meta/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><script>var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?617b7a83be5ab41fe2d846fc59c837fb";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"search.xml","languages":{"hits_empty":"找不到您查询的内容：${query}"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: undefined,
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isanchor: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'skiplist - 跳表',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: undefined,
+  isToc: true,
+  postUpdate: '2021-06-30 23:21:48'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    })(window)</script><link rel="stylesheet" href="/css/iconfont.css"><link rel="stylesheet" href="/css/other.css"><meta name="generator" content="Hexo 5.4.0"><link rel="stylesheet" href="/css/prism-tomorrow.css" type="text/css"></head><body><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" src="/img/head.jpeg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">5</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">7</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于我</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-address-book"></i><span> 朋友们</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="not-top-img" id="page-header"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">一七令</a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于我</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-address-book"></i><span> 朋友们</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav></header><main class="layout" id="content-inner"><div id="post"><div id="post-info"><h1 class="post-title">skiplist - 跳表</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2021-06-30T15:19:23.000Z" title="发表于 2021-06-30 23:19:23">2021-06-30</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2021-06-30T15:21:48.715Z" title="更新于 2021-06-30 23:21:48">2021-06-30</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/Redis/">Redis</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">1.8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>7分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="skiplist - 跳表"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div><article class="post-content" id="article-container"><h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>跳表(skiplist、跳跃表) 是一个很优秀的数据结构，比如用于 Redis、levelDB等出名的开源项目上。跳表在原有的有序链表上面增加了多级索引，通过索引来实现快速查找。</p>
+<p>它的结构特点在名称能很好的体现出来，就像兔子一样，蹦蹦跳跳。可以结合下面的图有个初步的印象。</p>
+<p><img src="https://img-blog.csdnimg.cn/20210630220021771.png#pic_center" alt="在这里插入图片描述"></p>
+<p>是不是看起来很形象了，接下来看看 Redis  是怎么实现跳表。</p>
+<h3 id="源码解读"><a href="#源码解读" class="headerlink" title="源码解读"></a>源码解读</h3><p> 本文讲解的版本为 Redis 6.0 ，可以在 server.h 头文件中找到对 skiplist 结构的定义。在 Redis 中，目前使用到跳表的只有 有序集合(zset)。</p>
+<p>定义结构体处有段注释，也指明了跳表在 Redis 中的使用范围了。</p>
+<blockquote>
+<p>ZSETs use a specialized version of Skiplists  </p>
+</blockquote>
+<pre class=" language-c"><code class="language-c"><span class="token comment" spellcheck="true">// 有序集合的结构体</span>
+<span class="token keyword">typedef</span> <span class="token keyword">struct</span> zset <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+    dict <span class="token operator">*</span>dict<span class="token punctuation">;</span>  <span class="token comment" spellcheck="true">// 哈希表是一种实现方式。</span>
+    zskiplist <span class="token operator">*</span>zsl<span class="token punctuation">;</span> <span class="token comment" spellcheck="true">// 本文主题 跳表 实现方式。</span>
+<span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span> zset<span class="token punctuation">;</span>
+
+<span class="token comment" spellcheck="true">// 跳表结构体</span>
+<span class="token keyword">typedef</span> <span class="token keyword">struct</span> zskiplist <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+    <span class="token keyword">struct</span> zskiplistNode <span class="token operator">*</span>header<span class="token punctuation">,</span> <span class="token operator">*</span>tail<span class="token punctuation">;</span>  <span class="token comment" spellcheck="true">// zskiplistNode 跳表节点, *header, *tail 头尾指针 </span>
+    <span class="token keyword">unsigned</span> <span class="token keyword">long</span> length<span class="token punctuation">;</span>  <span class="token comment" spellcheck="true">// 节点的数量</span>
+    <span class="token keyword">int</span> level<span class="token punctuation">;</span> <span class="token comment" spellcheck="true">// 最大层数</span>
+<span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span> zskiplist<span class="token punctuation">;</span>
+
+<span class="token comment" spellcheck="true">// 跳表节点结构体</span>
+<span class="token keyword">typedef</span> <span class="token keyword">struct</span> zskiplistNode <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+    sds ele<span class="token punctuation">;</span>  <span class="token comment" spellcheck="true">// 成员对象</span>
+    <span class="token keyword">double</span> score<span class="token punctuation">;</span>  <span class="token comment" spellcheck="true">// 分值   作为索引</span>
+    <span class="token keyword">struct</span> zskiplistNode <span class="token operator">*</span>backward<span class="token punctuation">;</span>   <span class="token comment" spellcheck="true">// 后退指针</span>
+    
+    <span class="token comment" spellcheck="true">// 节点层结构 数组</span>
+    <span class="token keyword">struct</span> zskiplistLevel <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+        <span class="token keyword">struct</span> zskiplistNode <span class="token operator">*</span>forward<span class="token punctuation">;</span>  <span class="token comment" spellcheck="true">// 前进指针</span>
+        <span class="token keyword">unsigned</span> <span class="token keyword">long</span> span<span class="token punctuation">;</span> <span class="token comment" spellcheck="true">// 该层向前跨越的节点数量</span>
+    <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span> level<span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">;</span>
+<span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span> zskiplistNode<span class="token punctuation">;</span>
+</code></pre>
+<p>看完上面的注视相比大家脑海中也构建出一张图了，它应该是长的和下图差不。<br><img src="https://img-blog.csdnimg.cn/2021063022052849.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L20wXzUxNTA0NTQ1,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述"><br>比如现在需要查找元素 56。</p>
+<p>若是普通的链表就需要遍历整个链表，直到找到为止。如上图就需要查找 6 次。</p>
+<p>但在跳表中，首先判断节点 56 是大于 34，则去下一层。 节点 56  &lt; 节点 78，然后遍历 节点 34～ 节点 78中间。这时候只有一个节点 56。所以需要查找 3 次就可以找到了。</p>
+<h3 id="操作接口"><a href="#操作接口" class="headerlink" title="操作接口"></a>操作接口</h3><p>操作结构的实现在 t_zset.c 文件中（不像 ziplist、quicklist 等是同名的一组文件）。</p>
+<p><strong>创建跳表</strong></p>
+<pre class=" language-c"><code class="language-c">
+zskiplist <span class="token operator">*</span><span class="token function">zslCreate</span><span class="token punctuation">(</span><span class="token keyword">void</span><span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+    <span class="token keyword">int</span> j<span class="token punctuation">;</span>
+    zskiplist <span class="token operator">*</span>zsl<span class="token punctuation">;</span> 
+
+    zsl <span class="token operator">=</span> <span class="token function">zmalloc</span><span class="token punctuation">(</span><span class="token keyword">sizeof</span><span class="token punctuation">(</span><span class="token operator">*</span>zsl<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment" spellcheck="true">//  申请内存</span>
+    zsl<span class="token operator">-></span>level <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span> <span class="token comment" spellcheck="true">// 默认层级</span>
+    zsl<span class="token operator">-></span>length <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>  <span class="token comment" spellcheck="true">// 默认长度</span>
+    
+    <span class="token comment" spellcheck="true">// 头指针创建， ZSKIPLIST_MAXLEVEL 最大层级为 32，可容纳  2^64   个节点。</span>
+    zsl<span class="token operator">-></span>header <span class="token operator">=</span> <span class="token function">zslCreateNode</span><span class="token punctuation">(</span>ZSKIPLIST_MAXLEVEL<span class="token punctuation">,</span><span class="token number">0</span><span class="token punctuation">,</span><span class="token constant">NULL</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    
+    <span class="token comment" spellcheck="true">// 跳表结构的头节点需有足够的指针域，以满足可能构造最大级数的需要，而尾节点不需要指针域。</span>
+    <span class="token keyword">for</span> <span class="token punctuation">(</span>j <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> j <span class="token operator">&lt;</span> ZSKIPLIST_MAXLEVEL<span class="token punctuation">;</span> j<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+        zsl<span class="token operator">-></span>header<span class="token operator">-></span>level<span class="token punctuation">[</span>j<span class="token punctuation">]</span><span class="token punctuation">.</span>forward <span class="token operator">=</span> <span class="token constant">NULL</span><span class="token punctuation">;</span>
+        zsl<span class="token operator">-></span>header<span class="token operator">-></span>level<span class="token punctuation">[</span>j<span class="token punctuation">]</span><span class="token punctuation">.</span>span <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+    <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+    
+    <span class="token comment" spellcheck="true">//  上面遍历 32 次，生成下面这段结构。</span>
+    <span class="token comment" spellcheck="true">//   struct zskiplistLevel &amp;#123;</span>
+    <span class="token comment" spellcheck="true">//       struct zskiplistNode *forward;  // 前进指针</span>
+    <span class="token comment" spellcheck="true">//       unsigned long span; // 该层向前跨越的节点数量</span>
+    <span class="token comment" spellcheck="true">//    &amp;#125; level[];</span>
+  
+   zsl<span class="token operator">-></span>header<span class="token operator">-></span>backward <span class="token operator">=</span> <span class="token constant">NULL</span><span class="token punctuation">;</span>
+    zsl<span class="token operator">-></span>tail <span class="token operator">=</span> <span class="token constant">NULL</span><span class="token punctuation">;</span>
+    <span class="token keyword">return</span> zsl<span class="token punctuation">;</span>
+    
+<span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+</code></pre>
+<p><strong>节点插入</strong></p>
+<pre class=" language-c"><code class="language-c">
+zskiplistNode <span class="token operator">*</span><span class="token function">zslInsert</span><span class="token punctuation">(</span>zskiplist <span class="token operator">*</span>zsl<span class="token punctuation">,</span> <span class="token keyword">double</span> score<span class="token punctuation">,</span> sds ele<span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+    zskiplistNode <span class="token operator">*</span>update<span class="token punctuation">[</span>ZSKIPLIST_MAXLEVEL<span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token operator">*</span>x<span class="token punctuation">;</span>
+    <span class="token keyword">unsigned</span> <span class="token keyword">int</span> rank<span class="token punctuation">[</span>ZSKIPLIST_MAXLEVEL<span class="token punctuation">]</span><span class="token punctuation">;</span>
+    <span class="token keyword">int</span> i<span class="token punctuation">,</span> level<span class="token punctuation">;</span>
+
+    <span class="token function">serverAssert</span><span class="token punctuation">(</span><span class="token operator">!</span><span class="token function">isnan</span><span class="token punctuation">(</span>score<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    x <span class="token operator">=</span> zsl<span class="token operator">-></span>header<span class="token punctuation">;</span>
+    <span class="token keyword">for</span> <span class="token punctuation">(</span>i <span class="token operator">=</span> zsl<span class="token operator">-></span>level<span class="token number">-1</span><span class="token punctuation">;</span> i <span class="token operator">>=</span> <span class="token number">0</span><span class="token punctuation">;</span> i<span class="token operator">--</span><span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+        
+        <span class="token comment" spellcheck="true">// 遍历找到插入的位置</span>
+        rank<span class="token punctuation">[</span>i<span class="token punctuation">]</span> <span class="token operator">=</span> i <span class="token operator">==</span> <span class="token punctuation">(</span>zsl<span class="token operator">-></span>level<span class="token number">-1</span><span class="token punctuation">)</span> <span class="token operator">?</span> <span class="token number">0</span> <span class="token punctuation">:</span> rank<span class="token punctuation">[</span>i<span class="token operator">+</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">;</span>
+        <span class="token keyword">while</span> <span class="token punctuation">(</span>x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward <span class="token operator">&amp;&amp;</span>
+                <span class="token punctuation">(</span>x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token operator">-></span>score <span class="token operator">&lt;</span> score <span class="token operator">||</span>
+                    <span class="token punctuation">(</span>x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token operator">-></span>score <span class="token operator">==</span> score <span class="token operator">&amp;&amp;</span>
+                    <span class="token function">sdscmp</span><span class="token punctuation">(</span>x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token operator">-></span>ele<span class="token punctuation">,</span>ele<span class="token punctuation">)</span> <span class="token operator">&lt;</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+            rank<span class="token punctuation">[</span>i<span class="token punctuation">]</span> <span class="token operator">+</span><span class="token operator">=</span> x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>span<span class="token punctuation">;</span>
+            x <span class="token operator">=</span> x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token punctuation">;</span>
+        <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+        update<span class="token punctuation">[</span>i<span class="token punctuation">]</span> <span class="token operator">=</span> x<span class="token punctuation">;</span>
+    <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+    
+    <span class="token comment" spellcheck="true">// 调用 zslInsert 的地方需要在 hash 中判断当前插入的元素是否已经存在集合中。</span>
+    <span class="token comment" spellcheck="true">// 元素不能重复，但是元素的分数是可以重复的。</span>
+     
+    <span class="token comment" spellcheck="true">// 生成随机值 代表需要插入的层级。 下面会讲解具体实现。</span>
+    level <span class="token operator">=</span> <span class="token function">zslRandomLevel</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>level <span class="token operator">></span> zsl<span class="token operator">-></span>level<span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+        <span class="token keyword">for</span> <span class="token punctuation">(</span>i <span class="token operator">=</span> zsl<span class="token operator">-></span>level<span class="token punctuation">;</span> i <span class="token operator">&lt;</span> level<span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+            rank<span class="token punctuation">[</span>i<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+            update<span class="token punctuation">[</span>i<span class="token punctuation">]</span> <span class="token operator">=</span> zsl<span class="token operator">-></span>header<span class="token punctuation">;</span>
+            update<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>span <span class="token operator">=</span> zsl<span class="token operator">-></span>length<span class="token punctuation">;</span>
+        <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+        zsl<span class="token operator">-></span>level <span class="token operator">=</span> level<span class="token punctuation">;</span>
+    <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+    
+    <span class="token comment" spellcheck="true">// 创建节点</span>
+    x <span class="token operator">=</span> <span class="token function">zslCreateNode</span><span class="token punctuation">(</span>level<span class="token punctuation">,</span>score<span class="token punctuation">,</span>ele<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">for</span> <span class="token punctuation">(</span>i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> level<span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+        x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward <span class="token operator">=</span> update<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token punctuation">;</span>
+        update<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward <span class="token operator">=</span> x<span class="token punctuation">;</span>
+
+         <span class="token comment" spellcheck="true">// 插入新节点后需要更新前后节点对应的span值。 span 是到下一个节点的跨度 </span>
+        x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>span <span class="token operator">=</span> update<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>span <span class="token operator">-</span> <span class="token punctuation">(</span>rank<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span> <span class="token operator">-</span> rank<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        update<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>span <span class="token operator">=</span> <span class="token punctuation">(</span>rank<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span> <span class="token operator">-</span> rank<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">;</span>
+    <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+
+    <span class="token comment" spellcheck="true">// 更新 其他level增加 span 值</span>
+    <span class="token keyword">for</span> <span class="token punctuation">(</span>i <span class="token operator">=</span> level<span class="token punctuation">;</span> i <span class="token operator">&lt;</span> zsl<span class="token operator">-></span>level<span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+        update<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>span<span class="token operator">++</span><span class="token punctuation">;</span>
+    <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+    
+    <span class="token comment" spellcheck="true">// 更新 后退指针。</span>
+    x<span class="token operator">-></span>backward <span class="token operator">=</span> <span class="token punctuation">(</span>update<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span> <span class="token operator">==</span> zsl<span class="token operator">-></span>header<span class="token punctuation">)</span> <span class="token operator">?</span> <span class="token constant">NULL</span> <span class="token punctuation">:</span> update<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>x<span class="token operator">-></span>level<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token punctuation">)</span>
+        x<span class="token operator">-></span>level<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token operator">-></span>backward <span class="token operator">=</span> x<span class="token punctuation">;</span>
+    <span class="token keyword">else</span>
+        zsl<span class="token operator">-></span>tail <span class="token operator">=</span> x<span class="token punctuation">;</span>
+    zsl<span class="token operator">-></span>length<span class="token operator">++</span><span class="token punctuation">;</span>
+    <span class="token keyword">return</span> x<span class="token punctuation">;</span>
+<span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+
+<span class="token comment" spellcheck="true">// 这里需要单独说下这个随机值生成的规则。</span>
+
+<span class="token keyword">int</span> <span class="token function">zslRandomLevel</span><span class="token punctuation">(</span><span class="token keyword">void</span><span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+    <span class="token keyword">int</span> level <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span>
+    <span class="token comment" spellcheck="true">// ZSKIPLIST_P = 0.25 ，虽然跳表的时间复杂度和二分查找一样，但是这里并不是 50% 的概率来控制一个节点是否放到下一层，而是 25%。 所以同一层节点下一层间的元素个数并不是一样的哦。</span>
+    <span class="token comment" spellcheck="true">// 还有的说法是这个值为 0.27更合适。 就是自然常数 e (2.7)。</span>
+
+    <span class="token comment" spellcheck="true">// random() 生成的随机数和 0xFFFF(16个1) 做 与运算。</span>
+    <span class="token comment" spellcheck="true">// 其实就是获取random()（32位）的前16位（或者说低位）。</span>
+    <span class="token keyword">while</span> <span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token function">random</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">&amp;</span><span class="token number">0xFFFF</span><span class="token punctuation">)</span> <span class="token operator">&lt;</span> <span class="token punctuation">(</span>ZSKIPLIST_P <span class="token operator">*</span> <span class="token number">0xFFFF</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        level <span class="token operator">+</span><span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span>
+    <span class="token keyword">return</span> <span class="token punctuation">(</span>level<span class="token operator">&lt;</span>ZSKIPLIST_MAXLEVEL<span class="token punctuation">)</span> <span class="token operator">?</span> level <span class="token punctuation">:</span> ZSKIPLIST_MAXLEVEL<span class="token punctuation">;</span>
+<span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+
+</code></pre>
+<p><strong>节点删除</strong></p>
+<pre class=" language-c"><code class="language-c">
+<span class="token keyword">int</span> <span class="token function">zslDelete</span><span class="token punctuation">(</span>zskiplist <span class="token operator">*</span>zsl<span class="token punctuation">,</span> <span class="token keyword">double</span> score<span class="token punctuation">,</span> sds ele<span class="token punctuation">,</span> zskiplistNode <span class="token operator">*</span><span class="token operator">*</span>node<span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+    zskiplistNode <span class="token operator">*</span>update<span class="token punctuation">[</span>ZSKIPLIST_MAXLEVEL<span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token operator">*</span>x<span class="token punctuation">;</span>
+    <span class="token keyword">int</span> i<span class="token punctuation">;</span>
+
+    x <span class="token operator">=</span> zsl<span class="token operator">-></span>header<span class="token punctuation">;</span>
+    <span class="token keyword">for</span> <span class="token punctuation">(</span>i <span class="token operator">=</span> zsl<span class="token operator">-></span>level<span class="token number">-1</span><span class="token punctuation">;</span> i <span class="token operator">>=</span> <span class="token number">0</span><span class="token punctuation">;</span> i<span class="token operator">--</span><span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+        <span class="token keyword">while</span> <span class="token punctuation">(</span>x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward <span class="token operator">&amp;&amp;</span>
+                <span class="token punctuation">(</span>x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token operator">-></span>score <span class="token operator">&lt;</span> score <span class="token operator">||</span>
+                    <span class="token punctuation">(</span>x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token operator">-></span>score <span class="token operator">==</span> score <span class="token operator">&amp;&amp;</span>
+                     <span class="token function">sdscmp</span><span class="token punctuation">(</span>x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token operator">-></span>ele<span class="token punctuation">,</span>ele<span class="token punctuation">)</span> <span class="token operator">&lt;</span> <span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+            x <span class="token operator">=</span> x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token punctuation">;</span>
+        <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+        update<span class="token punctuation">[</span>i<span class="token punctuation">]</span> <span class="token operator">=</span> x<span class="token punctuation">;</span>
+    <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+   
+   <span class="token comment" spellcheck="true">// 找到分数和值都一样的元素。</span>
+    x <span class="token operator">=</span> x<span class="token operator">-></span>level<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token punctuation">;</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>x <span class="token operator">&amp;&amp;</span> score <span class="token operator">==</span> x<span class="token operator">-></span>score <span class="token operator">&amp;&amp;</span> <span class="token function">sdscmp</span><span class="token punctuation">(</span>x<span class="token operator">-></span>ele<span class="token punctuation">,</span>ele<span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token number">0</span><span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+        <span class="token function">zslDeleteNode</span><span class="token punctuation">(</span>zsl<span class="token punctuation">,</span> x<span class="token punctuation">,</span> update<span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>node<span class="token punctuation">)</span>
+            <span class="token function">zslFreeNode</span><span class="token punctuation">(</span>x<span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token keyword">else</span>
+            <span class="token operator">*</span>node <span class="token operator">=</span> x<span class="token punctuation">;</span>
+        <span class="token keyword">return</span> <span class="token number">1</span><span class="token punctuation">;</span>
+    <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+    <span class="token keyword">return</span> <span class="token number">0</span><span class="token punctuation">;</span> <span class="token comment" spellcheck="true">// 没找到</span>
+<span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+
+<span class="token comment" spellcheck="true">// 删除的具体逻辑</span>
+<span class="token keyword">void</span> <span class="token function">zslDeleteNode</span><span class="token punctuation">(</span>zskiplist <span class="token operator">*</span>zsl<span class="token punctuation">,</span> zskiplistNode <span class="token operator">*</span>x<span class="token punctuation">,</span> zskiplistNode <span class="token operator">*</span><span class="token operator">*</span>update<span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+    <span class="token keyword">int</span> i<span class="token punctuation">;</span>
+    
+    <span class="token comment" spellcheck="true">// 更新 每一层forward、span。</span>
+    <span class="token keyword">for</span> <span class="token punctuation">(</span>i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> zsl<span class="token operator">-></span>level<span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span>update<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward <span class="token operator">==</span> x<span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+            update<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>span <span class="token operator">+</span><span class="token operator">=</span> x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>span <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">;</span>
+            update<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward <span class="token operator">=</span> x<span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token punctuation">;</span>
+        <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span> <span class="token keyword">else</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+            update<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token operator">-></span>level<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>span <span class="token operator">-</span><span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span>
+        <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+    <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>x<span class="token operator">-></span>level<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token punctuation">)</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+        x<span class="token operator">-></span>level<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>forward<span class="token operator">-></span>backward <span class="token operator">=</span> x<span class="token operator">-></span>backward<span class="token punctuation">;</span>
+    <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span> <span class="token keyword">else</span> <span class="token operator">&amp;</span>#<span class="token number">123</span><span class="token punctuation">;</span>
+        zsl<span class="token operator">-></span>tail <span class="token operator">=</span> x<span class="token operator">-></span>backward<span class="token punctuation">;</span>
+    <span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+    <span class="token comment" spellcheck="true">// 若删除的层级没有元素 层级减 1。</span>
+    <span class="token keyword">while</span><span class="token punctuation">(</span>zsl<span class="token operator">-></span>level <span class="token operator">></span> <span class="token number">1</span> <span class="token operator">&amp;&amp;</span> zsl<span class="token operator">-></span>header<span class="token operator">-></span>level<span class="token punctuation">[</span>zsl<span class="token operator">-></span>level<span class="token number">-1</span><span class="token punctuation">]</span><span class="token punctuation">.</span>forward <span class="token operator">==</span> <span class="token constant">NULL</span><span class="token punctuation">)</span>
+        zsl<span class="token operator">-></span>level<span class="token operator">--</span><span class="token punctuation">;</span>
+        
+    <span class="token comment" spellcheck="true">// 元素长度减 1。</span>
+    zsl<span class="token operator">-></span>length<span class="token operator">--</span><span class="token punctuation">;</span>
+<span class="token operator">&amp;</span>#<span class="token number">125</span><span class="token punctuation">;</span>
+</code></pre>
+<p>源码解读就先到这里，更多的可以直接查看源码。</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>跳表是一个随机化的数据结构，实质就是一种可以进行二分查找的有序链表。跳表在原有的有序链表上面增加了多级索引，通过索引来实现快速查找。跳表不仅能提高搜索性能，同时也可以提高插入和删除操作的性能。</p>
+<p>跳表中的搜索、插入、删除操作的时间均为 O(logn)，最坏情况(（level = 1）时间复杂性为 O(n) 。相比之下，在一个有序数组或链表中进行插入/删除操作的时间为 O(n)，最坏情况下为 O(n)。</p>
+<p>它采用随机技术决定链表中哪些节点应增加向前指针以及在该节点中应增加多少个指针。跳表结构的头节点需有足够的指针域，以满足可能构造最大级数的需要，而尾节点不需要指针域。</p>
+<p>不好之处就是多层结构会占用额外的空间，是典型的空间换时间的操作。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">一七令</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://blog.ucwords.com/2021/06/30/skiplist-tiao-biao/">http://blog.ucwords.com/2021/06/30/skiplist-tiao-biao/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://blog.ucwords.com" target="_blank">一七令</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/redis/">redis</a><a class="post-meta__tags" href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/">数据结构</a><a class="post-meta__tags" href="/tags/skiplist/">skiplist</a></div><div class="post_share"><div class="social-share" data-image="/img/cover/skiplist.png" data-sites="wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><div class="post-reward"><div class="reward-button button--animated"><i class="fas fa-qrcode"></i> 打赏</div><div class="reward-main"><ul class="reward-all"><li class="reward-item"><a href="/img/wechat.jpeg" target="_blank"><img class="post-qr-code-img" src="/img/wechat.jpeg" alt="wechat"/></a><div class="post-qr-code-desc">wechat</div></li><li class="reward-item"><a href="/img/alipay.jpeg" target="_blank"><img class="post-qr-code-img" src="/img/alipay.jpeg" alt="alipay"/></a><div class="post-qr-code-desc">alipay</div></li></ul></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/2021/06/26/zipmap-ya-suo-zi-dian/"><img class="next-cover" src="/img/cover/hash.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">zipmap-压缩字典</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span> 相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2021/06/26/quicklist-kuai-su-lie-biao/" title="quicklist-快速列表"><img class="cover" src="/img/cover/quicklist.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-06-26</div><div class="title">quicklist-快速列表</div></div></a></div><div><a href="/2021/06/26/intset-zheng-shu-shu-zu/" title="intset - 整数数组"><img class="cover" src="/img/cover/intset.jpeg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-06-26</div><div class="title">intset - 整数数组</div></div></a></div><div><a href="/2021/06/26/zipmap-ya-suo-zi-dian/" title="zipmap-压缩字典"><img class="cover" src="/img/cover/hash.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-06-26</div><div class="title">zipmap-压缩字典</div></div></a></div><div><a href="/2021/06/20/ziplist-ya-suo-lie-biao/" title="ziplist - 压缩列表"><img class="cover" src="/img/cover/list.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-06-20</div><div class="title">ziplist - 压缩列表</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-info-avatar is-center"><img class="avatar-img" src="/img/head.jpeg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/><div class="author-info__name">一七令</div><div class="author-info__description">这个一个后端程序员的一亩三分地, 记录分享工作、学习和生活中的积累和快乐！</div></div><div class="card-info-data"><div class="card-info-data-item is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">5</div></a></div><div class="card-info-data-item is-center"><a href="/tags/"><div class="headline">标签</div><div class="length-num">7</div></a></div><div class="card-info-data-item is-center"><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div></div><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/ucwords" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="https://blog.csdn.net/m0_51504545" target="_blank" title="CSDN"><i class="iconfont icon-csdn"></i></a></div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB"><span class="toc-number">2.</span> <span class="toc-text">源码解读</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%93%8D%E4%BD%9C%E6%8E%A5%E5%8F%A3"><span class="toc-number">3.</span> <span class="toc-text">操作接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">4.</span> <span class="toc-text">总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2021/06/30/skiplist-tiao-biao/" title="skiplist - 跳表"><img src="/img/cover/skiplist.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="skiplist - 跳表"/></a><div class="content"><a class="title" href="/2021/06/30/skiplist-tiao-biao/" title="skiplist - 跳表">skiplist - 跳表</a><time datetime="2021-06-30T15:19:23.000Z" title="发表于 2021-06-30 23:19:23">2021-06-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/06/26/zipmap-ya-suo-zi-dian/" title="zipmap-压缩字典"><img src="/img/cover/hash.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="zipmap-压缩字典"/></a><div class="content"><a class="title" href="/2021/06/26/zipmap-ya-suo-zi-dian/" title="zipmap-压缩字典">zipmap-压缩字典</a><time datetime="2021-06-26T11:06:17.000Z" title="发表于 2021-06-26 19:06:17">2021-06-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/06/26/quicklist-kuai-su-lie-biao/" title="quicklist-快速列表"><img src="/img/cover/quicklist.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="quicklist-快速列表"/></a><div class="content"><a class="title" href="/2021/06/26/quicklist-kuai-su-lie-biao/" title="quicklist-快速列表">quicklist-快速列表</a><time datetime="2021-06-26T11:03:06.000Z" title="发表于 2021-06-26 19:03:06">2021-06-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/06/26/intset-zheng-shu-shu-zu/" title="intset - 整数数组"><img src="/img/cover/intset.jpeg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="intset - 整数数组"/></a><div class="content"><a class="title" href="/2021/06/26/intset-zheng-shu-shu-zu/" title="intset - 整数数组">intset - 整数数组</a><time datetime="2021-06-26T10:33:25.000Z" title="发表于 2021-06-26 18:33:25">2021-06-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/06/20/ziplist-ya-suo-lie-biao/" title="ziplist - 压缩列表"><img src="/img/cover/list.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="ziplist - 压缩列表"/></a><div class="content"><a class="title" href="/2021/06/20/ziplist-ya-suo-lie-biao/" title="ziplist - 压缩列表">ziplist - 压缩列表</a><time datetime="2021-06-20T12:32:42.000Z" title="发表于 2021-06-20 20:32:42">2021-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2021 By 一七令</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div id="local-search"><div class="search-dialog"><div class="search-dialog__title" id="local-search-title">本地搜索</div><div id="local-input-panel"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div></div><hr/><div id="local-search-results"></div><span class="search-close-button"><i class="fas fa-times"></i></span></div><div id="search-mask"></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/search/local-search.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
