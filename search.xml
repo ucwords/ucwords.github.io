@@ -4,6 +4,35 @@
   
     
     <entry>
+      <title>Kafka -入门</title>
+      <link href="/2021/07/01/kafka-ru-men/"/>
+      <url>/2021/07/01/kafka-ru-men/</url>
+      
+        <content type="html"><![CDATA[<h3 id="Kafka-是什么"><a href="#Kafka-是什么" class="headerlink" title="Kafka 是什么"></a>Kafka 是什么</h3><p>近几年大数据炙手可热，相信大多数开发者多多少少了解或使用过 Kafka。博主也是刚入门的萌新，所以整理学习中的经验总结。授予有缘人。</p><p>Kafka 是什么？它是一款开源的消息引擎系统，是 Apache 基金会的一个顶级开源项目。由 Scala 和 Java 编写, 可惜我都不会。</p><p>对于刚接触 <strong>消息引擎系统（Messaging System）</strong> 这个词来说是有些迷茫的，维基百科中是这样描述：<a href="https://en.wikipedia.org/wiki/Franz_Kafka">是为处理实时数据提供一个统一、高吞吐、低延迟的平台。其持久化层本质上是一个“按照分布式事务日志架构的大规模发布/订阅消息队列”</a>。</p><p>简单的理解 Kafka 是在各个系统之间传输消息，从而实现松耦合的异步式数据传递。这时候可能有部分看官会想到一些如 XML、json、Protocol Buffer 等成熟方案，但 Kafka 使用的是纯二进制的字节序列传输信息。所以这也是 Kafka 的优势之一。</p><p>现在了解 Kafka 大致什么，那接下来开始使用起来吧。但在使用之前，需要选择一个合适的 Kafka 方案。是的，Kafka 有好几种。</p><h3 id="Kafka-怎么选"><a href="#Kafka-怎么选" class="headerlink" title="Kafka 怎么选"></a>Kafka 怎么选</h3><p>类似 Linux 有 RedHat、CentOS、Ubuntu等多种发行版本，Kafka 也因为有多个发行商所有有多种版本。比较出名的是有以下几种：</p><table><thead><tr><th>名称</th><th>发行商</th><th>选它理由</th><th>不选它理由</th></tr></thead><tbody><tr><td>Apache Kafka</td><td>Apache</td><td>血脉纯正，社区庞大。</td><td>仅提供最最基础的组件，对小白不友好。</td></tr><tr><td>Confluent Kafka</td><td>Confluent</td><td>免费版类似 Apache 版本，企业版 提供商业服务和更多功能。</td><td>几乎不在大陆发展，缺少社区、资料等，不推荐。</td></tr><tr><td>CDH Kafka</td><td>Cloudera</td><td>完善的平台服务，通过便捷化的界面操作将 Kafka 的安装、运维、管理、监控全部统一在控制台中。对于小白是比较有好的。</td><td>对于深度研究的可玩性不如其他，需要集成平台所以有一定的滞后性。</td></tr></tbody></table><h3 id="Kafka-常用术语"><a href="#Kafka-常用术语" class="headerlink" title="Kafka 常用术语"></a>Kafka 常用术语</h3><p>正所谓：上梁山，说匪话（我瞎编的）。Kafka 中也有一些术语需要使用前了解。</p><p>Kafka 是提供一套完备的消息发布与订阅解决方案的分布式的消息引擎系统。所以消息是一个重要的部分，那消息对应的对象称之为：<strong>主题（Topic）</strong>。这里的主题和 ES   中的索引差不多的意思。</p><p>同样的 Kafka 中也有<strong>生产者（Producer）</strong>和<strong>消费者（Consumer）</strong>，统称为客户端（Clients）。</p><p>采用 S/C 结构的 Kafka 服务端是由名为 Broker 的服务进程构成，即一个 Kafka 集群由多个 <strong>Broker</strong> 组成，Broker 负责接收和处理客户端发送过来的请求，以及对消息进行持久化。</p><p>Kafka 是一个高可用的服务，其最重要的就是其备份机制（Replication）。实现方式为把相同的数据拷贝到多台节点上，这些备份称之为 <strong>副本（Replica）</strong>。 这种方式在类似 ES。</p><p>Kafka 的副本分为俩种：<strong>领导者副本（Leader Replica）</strong>和<strong>追随者副本（Follower Replica）</strong>。 其中 领导者副本用于和客户端程序进行交互。追随者副本仅仅被动地追随领导者副本而已，不能与外界进行交互（备胎，其实追随者副本可以理解为 MySQL 的从库一样，但是不同的是 MySQL 从是可以读的）。</p><p>它们工作模式为生产者向领导者副本写消息；消费者从领导者副本读消息。追随者副本仅向领导者副本发送请求，请求领导者把最新生产的消息发给它。</p><p>Kafka 作为一个分布式系统，有着很方便的扩展性。 和 ES、MongoDB 等类似，Kafka 中也有<strong>分区（Partitioning）</strong>的操作。</p><p>Kafka 分区机制是将每个主题划分成多个分区（Partition），每个分区是一组有序的消息日志。生产者生产的每条消息只会被发送到一个分区中（尽管有多个分区）。</p><p>其中分区和副本有这种这样的约束：分区中定义副本，一个分区可包含多个副本。但只能有一个领导者副本，可以多个(N-1 N是副本数)追随者副本。</p><p>上面就是大概的术语了，更多的后面的文章在补充了。接下来看很重要的一点，为什么总是听到有人说 Kafka 很快。</p><h3 id="Kafka-为什么快"><a href="#Kafka-为什么快" class="headerlink" title="Kafka 为什么快"></a>Kafka 为什么快</h3><p>其实 Kafka 快大部分是得益于硬件设备的加持，运用了 零拷贝（Zero-Copy）和 DMA （Direct Memory Access）技术。</p><p>Kafka 作为一个消息系统，所以大多情况是消息的接受和写入，读取和发送。这些操作在大量数据下， I/O消耗是很恐怖的。降低 I/O 的带来的影响 Kafka 是很重视。</p><p><strong>DMA （Direct Memory Access）</strong> 也叫直接内存访问。它是一个相对于 CPU 独立的芯片, 作用是代替 CPU 处理控制内存和 I/O 设备的数据传输。从而减轻 CPU 的负担，让 CPU 做该做的事。</p><p>所以使用 DMA 可以减少 CPU 参与复制的次数，如下图例子, 读取数据往网卡发。<br><img src="https://img-blog.csdnimg.cn/20210701225534123.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L20wXzUxNTA0NTQ1,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述"><br>上图中 DMA 和 CPU 各拷贝了 2 次，总的拷贝了 4 次。DMA 替 CPU 拷贝了  2 次，所以使用  DMA 是可以降低 CPU 的负载。</p><p>但是一份数据拷贝了 4 次 和 4 次用户态与内核态切换，这是很不划算的，所以 Kafka 也使用了 <a href="https://blog.csdn.net/m0_51504545/article/details/116245486">零拷贝</a> 技术。</p><p>零拷贝可以理解为没有在内存层面去“复制（Copy）”数据。以上面的例子举例。零拷贝下的结构式这样的：</p><p><img src="https://img-blog.csdnimg.cn/20210701231206345.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L20wXzUxNTA0NTQ1,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述"><br>直接把内核缓冲区里的数据拷贝到 socket 缓冲区里，不再拷贝到用户态，这样就只有 2 次上下文切换，和 3 次数据拷贝。</p><p>当然还有 G-DMA 等技术，上面的流程还能在优化。更多的可以看博文 《<a href="https://blog.csdn.net/m0_51504545/article/details/116245486">零拷贝-浅谈</a>》。</p><h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>本文从 Kafka 是什么、Kafka 版本选择、术语解释、Kafka 复制原理等方面介绍了 Kafka，相信大家都有了一个初步的认识。接下来的博客中会深入介绍 Kafka 使用、原理、工具等。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> Redis </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> kafka </tag>
+            
+            <tag> DMA </tag>
+            
+            <tag> 零拷贝 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>skiplist - 跳表</title>
       <link href="/2021/06/30/skiplist-tiao-biao/"/>
       <url>/2021/06/30/skiplist-tiao-biao/</url>
